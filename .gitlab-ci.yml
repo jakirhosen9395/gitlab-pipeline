@@ -1,0 +1,39 @@
+.defaults: &default_include
+  project: "jakir.hosen/gitlab-pipeline"
+  ref: "pipeline"
+
+workflow:
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH'
+    - when: never
+
+include:
+  # Dev pipeline (dev branch only)
+  - <<: *default_include
+    file: "/deployment-dev/.gitlab-ci-dev.yml"
+    rules:
+      - if: '$CI_COMMIT_BRANCH == "dev"'
+
+  # Stage pipeline (stage branch only)
+  - <<: *default_include
+    file: "/deployment-stage/.gitlab-ci-stage.yml"
+    rules:
+      - if: '$CI_COMMIT_BRANCH == "stage"'
+
+  # Prod pipeline (ONLY semver tag)
+  - <<: *default_include
+    file: "/deployment-prod/.gitlab-ci-prod.yml"
+    rules:
+      - if: '$CI_COMMIT_BRANCH == "prod"'
+      - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+
+  # Default pipeline (other branches; never for env tags)
+  - <<: *default_include
+    file: "/default/.gitlab-ci-default.yml"
+    rules:
+      - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+        when: never
+      - if: '$CI_COMMIT_BRANCH != "dev" &&
+              $CI_COMMIT_BRANCH != "stage" &&
+              $CI_COMMIT_BRANCH != "prod"'
