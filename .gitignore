@@ -1,0 +1,4 @@
+# Ignore README and GitLab CI config at repository root
+/README.md
+/.gitlab-ci.yml
+
