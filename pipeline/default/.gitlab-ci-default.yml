@@ -1,9 +1,0 @@
-stages:
-- trigger_argo
-
-trigger_argo:
-  stage: trigger_argo
-  script:
-    - echo "Pipeline executed"
-  rules:
-    - when: never
