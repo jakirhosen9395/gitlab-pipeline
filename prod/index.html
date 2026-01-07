@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Simple Calculator</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 12px; }
+    label { display:block; margin: 8px 0 4px; }
+    input[type="text"] { width: 100%; padding: 8px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .actions { margin-top: 16px; display:flex; gap:8px; }
+    .error { color: #b00020; }
+    .result { font-weight: 600; }
+    .badge { background:#eee; padding:2px 8px; border-radius:12px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <h1>Simple Calculator (Go) <span class="badge">{{.Version}}</span></h1>
+
+  <form action="/calculator" method="POST">
+    <div class="row">
+      <div>
+        <label for="num1">Number 1</label>
+        <input type="text" id="num1" name="num1" value="{{.Num1}}" />
+      </div>
+      <div>
+        <label for="num2">Number 2</label>
+        <input type="text" id="num2" name="num2" value="{{.Num2}}" />
+      </div>
+    </div>
+
+    <label for="operator">Operator <small>(add, subtract, multiply, divide)</small></label>
+    <input type="text" id="operator" name="operator" value="{{.Operator}}" />
+
+    <div class="actions">
+      <input type="submit" value="Calculate" />
+      <button type="button" onclick="clearForm()">Clear</button>
+    </div>
+  </form>
+
+  {{ if .Result }}<p class="result">Result: {{.Result}}</p>{{ end }}
+  {{ if .Error }}<p class="error">{{.Error}}</p>{{ end }}
+
+  <script>
+    function clearForm() {
+      document.getElementById("num1").value = "";
+      document.getElementById("num2").value = "";
+      document.getElementById("operator").value = "";
+      document.querySelectorAll(".result,.error").forEach(el => el && (el.textContent = ""));
+    }
+  </script>
+</body>
+</html>

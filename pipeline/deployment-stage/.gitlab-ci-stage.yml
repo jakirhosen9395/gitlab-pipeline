@@ -1,0 +1,46 @@
+variables:
+  STAGE_CONTAINER_NAME: "source-code-stage"
+  STAGE_PORT: "6001"
+  APP_PORT_INTERNAL: "9000"
+  DOCKERHUB_IMAGE: "$DOCKERHUB_NAMESPACE/$DOCKERHUB_REPO"
+
+stages:
+  - build-stage
+  - push-stage
+  - deploy-stage
+
+build:
+  stage: build-stage
+  script:
+    - docker build -t "$DOCKERHUB_IMAGE:$CI_PIPELINE_IID" .
+  tags:
+    - shell-runner
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "stage"'
+
+push:
+  stage: push-stage
+  script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker push "$DOCKERHUB_IMAGE:$CI_PIPELINE_IID"
+    - docker tag "$DOCKERHUB_IMAGE:$CI_PIPELINE_IID" "$DOCKERHUB_IMAGE:stage"
+    - docker push "$DOCKERHUB_IMAGE:stage"
+  tags:
+    - shell-runner
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "stage"'
+  needs:
+    - build
+
+deploy:
+  stage: deploy-stage
+  script:
+    - docker pull "$DOCKERHUB_IMAGE:$CI_PIPELINE_IID"
+    - docker rm -f "$STAGE_CONTAINER_NAME" || true
+    - docker run -d --name "$STAGE_CONTAINER_NAME" -p "$STAGE_PORT:$APP_PORT_INTERNAL" --restart always --security-opt no-new-privileges:true --cap-drop ALL "$DOCKERHUB_IMAGE:$CI_PIPELINE_IID"
+  tags:
+    - shell-runner
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "stage"'
+  needs:
+    - push

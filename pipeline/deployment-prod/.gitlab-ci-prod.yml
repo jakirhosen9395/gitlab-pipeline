@@ -1,0 +1,75 @@
+variables:
+  PROD_CONTAINER_NAME: "source-code-prod"
+  PROD_PORT: "7001"
+  APP_PORT_INTERNAL: "9000"
+  DOCKERHUB_IMAGE: "$DOCKERHUB_NAMESPACE/$DOCKERHUB_PROJECT"
+
+stages:
+  - build-prod
+  - push-prod
+  - deploy-prod
+
+.dockerhub_login:
+  before_script:
+    - set -euo pipefail
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+build:
+  stage: build-prod
+  extends: .dockerhub_login
+  script:
+    - set -euo pipefail
+    - |
+      TAG="$CI_COMMIT_TAG"
+      if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+        echo "ERROR: Tag must match vMAJOR.MINOR.PATCH (e.g., v1.1.1)"
+        exit 1
+      fi
+      docker build -t "$DOCKERHUB_IMAGE:$TAG" .
+  tags:
+    - shell-runner
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+push:
+  stage: push-prod
+  extends: .dockerhub_login
+  script:
+    - set -euo pipefail
+    - |
+      TAG="$CI_COMMIT_TAG"
+      if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+        echo "ERROR: Tag must match vMAJOR.MINOR.PATCH (e.g., v1.1.1)"
+        exit 1
+      fi
+      docker push "$DOCKERHUB_IMAGE:$TAG"
+      docker tag "$DOCKERHUB_IMAGE:$TAG" "$DOCKERHUB_IMAGE:prod"
+      docker push "$DOCKERHUB_IMAGE:prod"
+  tags:
+    - shell-runner
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  needs:
+    - build
+
+deploy:
+  stage: deploy-prod
+  extends: .dockerhub_login
+  script:
+    - set -euo pipefail
+    - |
+      TAG="$CI_COMMIT_TAG"
+      if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+        echo "ERROR: Tag must match vMAJOR.MINOR.PATCH (e.g., v1.1.1)"
+        exit 1
+      fi
+      docker pull "$DOCKERHUB_IMAGE:$TAG"
+      docker rm -f "$PROD_CONTAINER_NAME" || true
+      docker run -d --name "$PROD_CONTAINER_NAME" -p "$PROD_PORT:$APP_PORT_INTERNAL" --restart always --security-opt no-new-privileges:true --cap-drop ALL "$DOCKERHUB_IMAGE:$TAG"
+
+  tags:
+    - shell-runner
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  needs:
+    - push
